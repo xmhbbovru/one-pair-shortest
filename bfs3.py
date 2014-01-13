@@ -1,61 +1,53 @@
 #!/usr/bin/env python
-# bfs3.py rev 11 Jan 2014 Stuart Ambler
-# Fourth try at single pair shortest path algorithm via bread first search.
+# bfs3.py rev 12 Jan 2014 Stuart Ambler
+# Fourth try at single pair shortest path algorithm via breadth first search.
 # It was usually slower than the third and seemed to offer no advantage.
 # Copyright (c) 2014 Stuart Ambler.
 # Distributed under the Boost License in the accompanying file LICENSE.
 
-from collections import deque
+import numpy
 
 # Returns a matching node, if any, from the two lists of nodes (integers).
 # numbers.  However, bfs3 using this implementation of find_match, turned
 # out slower in a few tests, than bfs2.  Perhaps it would be different in C.
+# The scratch argument is just for compatibility with the other implementation.
     
-def find_match(list1, list2):
-    # This will sort the lists in place; ok with intended use.
-    list1.sort()
-    list2.sort()
-    len1 = len(list1)
-    len2 = len(list2)
-    i1 = 0
-    i2 = 0
-    while (i1 < len1) and (i2 < len2):
-        curr1 = list1[i1]
-        curr2 = list2[i2]
-        if curr1 == curr2:
-            return curr1
-        elif curr1 < curr2:
-            i1 = i1 + 1
-        else:
-            i2 = i2 + 1
-    return None
+#def find_match(list1, list2, scratch):
+#    # This will sort the lists in place; ok with intended use.
+#    list1.sort()
+#    list2.sort()
+#    len1 = len(list1)
+#    len2 = len(list2)
+#    i1 = 0
+#    i2 = 0
+#    while (i1 < len1) and (i2 < len2):
+#        curr1 = list1[i1]
+#        curr2 = list2[i2]
+#        if curr1 == curr2:
+#            return curr1
+#        elif curr1 < curr2:
+#            i1 = i1 + 1
+#        else:
+#            i2 = i2 + 1
+#    return None
 
 # Another find_match implementation, which takes extra memory and might cause
-# memory cache problems (or might not) is if the caller passes in a list to
-# be used as a buffer of the smallest possible datatype, the list large enough
-# for every element of list1 and list2 to be used as an index to it, and set to
-# all zeros or all False to on entry.  Then find_match can set to one or True
-# those elements of the buffer indexed by elements of list2, and for every
-# element of list1, check whether the element of the buffer indexed by it is
-# set to one or True.  Afterward, the elements of the buffer set to one or Tru
-# are reset to zero or False.  This implementation was the reason for switching
-# in bfs2 from edgelist as dictionary to edgelist as array indexed by node
-# numbers.  However, bfs3 using this implementation of find_match, turned out
-# usually slower in a few tests, than bfs2.  Perhaps it would be different in C.
+# memory cache problems (or might not).  A previous version of this
+# implementation was the reason for switchin in bfs2 from edgelist as dictionary
+# to edgelist as array indexed by node numbers.  This was usually slower than
+# bfs2 until using numpy here.  find_match expects scratch to be a numpy array,
+# and expects values of list1 and list2 to be in the range 0..len(scratch)-1.
 
-#scratch = [False] * 1000000
-
-#def find_match(list1, list2):
-#    match_node = None
-#    global scratch
-#    for node in list2:
-#        scratch[node] = True
-#    for node in list1:
-#        if scratch[node]:
-#            match_node = node
-#    for node in list2:
-#        scratch[node] = False
-#    return match_node
+def find_match(list1, list2, scratch):
+    match_node = None
+    for node in list2:
+        scratch[node] = True
+    for node in list1:
+        if scratch[node]:
+            match_node = node
+            break
+    scratch.fill(False)
+    return match_node
 
 # Finds shortest path from root to target given edgelist, using breadth first
 # search, adapted from bfs2 using ideas from a previous version of bfs2.  The
@@ -63,7 +55,7 @@ def find_match(list1, list2):
 # the nodes in it are encountered.
 # Returns (path_len, path), path given as list of nodes, or None if no path.
 
-@profile  # for line_profiler
+#@profile  # for line_profiler
 def bfs3(root, target, edgelist):
     if (root == target):
         return (0, [root])
@@ -72,6 +64,8 @@ def bfs3(root, target, edgelist):
         or root < 0 or root >= nr_nodes
         or target < 0 or target >= nr_nodes):
         return None
+
+    scratch = numpy.zeros(nr_nodes, dtype=bool)
 
     if len(edgelist[root]) > len(edgelist[target]):
         (root, target) = (target, root)
@@ -94,7 +88,7 @@ def bfs3(root, target, edgelist):
                         parent_r[new_node] = node
                         r_level_nodes.append(new_node)
                         parent_r[new_node] = node
-            match_node = find_match(r_level_nodes, parent_t.keys())
+            match_node = find_match(r_level_nodes, parent_t.keys(), scratch)
             if match_node is not None:
                 break
         else:
@@ -106,7 +100,7 @@ def bfs3(root, target, edgelist):
                         parent_t[new_node] = node
                         t_level_nodes.append(new_node)
                         parent_t[new_node] = node
-            match_node = find_match(t_level_nodes, parent_r.keys())
+            match_node = find_match(t_level_nodes, parent_r.keys(), scratch)
             if match_node is not None:
                 break
  
@@ -114,15 +108,15 @@ def bfs3(root, target, edgelist):
         accum_r = [match_node]
         p = parent_r[match_node]
         while p is not None:
-            accum_r.insert(0, p)
+            accum_r.append(p)
             p = parent_r[p]
+        accum_r.reverse()
 
         accum_t = []
         p = parent_t[match_node]
         while p is not None:
-            accum_t.insert(0, p)
+            accum_t.append(p)
             p = parent_t[p]
-        accum_t.reverse()
 
         accum = accum_r if accum_t is None else accum_r + accum_t
         return (len(accum) - 1, accum)

@@ -1,10 +1,8 @@
 #!/usr/bin/env python
-# bfs2.py rev 11 Jan 2014 Stuart Ambler
-# Third try at single pair shortest path algorithm via bread first search.
+# bfs2.py rev 12 Jan 2014 Stuart Ambler
+# Third try at single pair shortest path algorithm via breadth first search.
 # Copyright (c) 2014 Stuart Ambler.
 # Distributed under the Boost License in the accompanying file LICENSE.
-
-from collections import deque
 
 # Finds shortest path from root to target given edgelist, using breadth first
 # search, adapted from bfs1, but moves from both ends to the middle, and uses
@@ -49,7 +47,6 @@ def bfs2(root, target, edgelist):
                     if new_node not in parent_r:
                         parent_r[new_node] = node
                         r_level_nodes.append(new_node)
-                        parent_r[new_node] = node
                     if node in parent_t:
                         match_node = node
                         break
@@ -63,7 +60,6 @@ def bfs2(root, target, edgelist):
                     if new_node not in parent_t:
                         parent_t[new_node] = node
                         t_level_nodes.append(new_node)
-                        parent_t[new_node] = node
                     if node in parent_r:
                         match_node = node
                         break
@@ -74,15 +70,15 @@ def bfs2(root, target, edgelist):
         accum_r = [match_node]
         p = parent_r[match_node]
         while p is not None:
-            accum_r.insert(0, p)
+            accum_r.append(p)
             p = parent_r[p]
+        accum_r.reverse()
 
         accum_t = []
         p = parent_t[match_node]
         while p is not None:
-            accum_t.insert(0, p)
+            accum_t.append(p)
             p = parent_t[p]
-        accum_t.reverse()
 
         accum = accum_r if accum_t is None else accum_r + accum_t
         return (len(accum) - 1, accum)

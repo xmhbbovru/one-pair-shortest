@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# test.py rev 11 Jan 2014 Stuart Ambler
+# test.py rev 12 Jan 2014 Stuart Ambler
 # Tests and times breadth first search algorithms bfs0,1,2 using graphs
 # generated and read in by gendata functions.
 # Copyright (c) 2014 Stuart Ambler.
@@ -18,6 +18,7 @@ import timeit
 from bfs0    import *
 from bfs1    import *
 from bfs2    import *
+from bfs3    import *
 from gendata import *
 
 # Transforms data as needed for input to bfs0,1,2, since the first two
@@ -202,8 +203,8 @@ def main(argv):
     (degree, max_depth, nr_reps_random, nr_nodes_random, fraction_edges,
      verbose) = get_cmdline_options(argv, degree, max_depth, nr_reps_random,
                                     nr_nodes_random, fraction_edges, verbose)
-    nr_bfs = 3
-    bfs_func_list = [bfs0, bfs1, bfs2]
+    nr_bfs = 4
+    bfs_func_list = [bfs0, bfs1, bfs2, bfs3]
 
     correct_el = {1: [2, 6], 2: [1, 3], 3: [2, 4, 5], 4: [3, 5],
                   5: [3, 4], 6: [1, 7], 7: [6], 8: [9], 9: [8]}
@@ -244,8 +245,11 @@ def main(argv):
     (eltree, eltree_arr,
      eltree_ndix2nr, eltree_ndnr2ix) = construct_tree_edgelist(degree,
                                                                max_depth)
-    eltree_root_nr   = int('1' * (max_depth - 1) + '11')
-    eltree_target_nr = int('1' * (max_depth - 1) + '21')
+    nr_digits_per_level = int(math.ceil(math.log10(degree)))
+    rightfill = '0' * (nr_digits_per_level - 1)
+    eltree_root_nr   = int((rightfill + '1') * (max_depth + 1))
+    eltree_target_nr = int((rightfill + '1') * (max_depth - 1)
+                           + (rightfill + '2') + (rightfill + '1'))
 
     # Order makes a difference in timing; putting node with smaller edgelist
     # as root has been faster.
@@ -254,7 +258,8 @@ def main(argv):
     print(('generated tree graph degree {0}, max_depth {1}, '
            + 'nr nodes {2} = nr edges + 1').format(degree, max_depth,
                                                    len(eltree.keys())))
-    # Test that the three methods agree on all pairs for graph from file.
+
+    # Test that the various methods agree on all pairs for graph from file.
 
     nodelist = sorted(el.keys())
     for i in range(1, nr_bfs):
@@ -271,7 +276,7 @@ def main(argv):
                 print(bfsi_output)
                 print(bfs0_output)
 
-    # Total times for each of three methods for all pairs for graph from file.
+    # Total times for each of various methods for all pairs for graph from file.
 
     for i in range(0, nr_bfs):
         t = 0
@@ -293,7 +298,7 @@ def main(argv):
             t = t + timeit.timeit(test_str, setup=setup_str, number=1)
         print('timeit file all pairs bfs{0} {1}'.format(i, t))
 
-    # Times for the three methods for tree graph constructed above.
+    # Times for the various methods for tree graph constructed above.
 
     for i in range(0, nr_bfs):
         (root, target, e, name) = bfs_input_helper(i, eltree_root_nr,
@@ -318,7 +323,7 @@ def main(argv):
                + '').format(degree, max_depth, i,
                             eltree_root_nr, eltree_target_nr, t))
 
-    # Generate random graphs, choose nodes at random, time the three methods.
+    # Generate random graphs, choose nodes at random, time the various methods.
     # Because of the time to generate, put the bfs method loop inside the
     # generation rep loop.
 
@@ -367,7 +372,7 @@ def main(argv):
                 ran_pathlen[i] = ran_pathlen[i] + global_bfs_output[0]
             ran_output[i] = global_bfs_output
             if not output_eq_or_rev(ran_output[i], ran_output[0]):
-                print('Inconsistency random graph bfs{0},bfs0)'.format(i))
+                print('Inconsistency random graph bfs{0},bfs0'.format(i))
                 print(ran_output[i])
                 print(ran_output[0])
 

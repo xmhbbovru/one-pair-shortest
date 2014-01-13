@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# shortestpath.py rev 11 Jan 2013 Stuart Ambler
+# shortestpath.py rev 12 Jan 2013 Stuart Ambler
 # Breadth first search methods for single pair shortest path, reads graphs,
 # generates trees and random graphs, and tests.
 # Copyright (c) 2014 Stuart Ambler.
@@ -7,12 +7,13 @@
 
 from __future__ import print_function
 
-from collections import deque  # for bfs0,1,2
+from collections import deque  # for bfs0,1
 #import cProfile   # for testing; uses line_profiler now
 import functools  # for testing
 import getopt     # for testing
 import itertools  # for testing
 import math       # for testing and test data generation
+import numpy      # for find_match and bfs3
 import random     # for test data generation
 import sys        # for testing
 import timeit     # for testing
@@ -151,7 +152,6 @@ def bfs2(root, target, edgelist):
                     if new_node not in parent_r:
                         parent_r[new_node] = node
                         r_level_nodes.append(new_node)
-                        parent_r[new_node] = node
                     if node in parent_t:
                         match_node = node
                         break
@@ -165,7 +165,6 @@ def bfs2(root, target, edgelist):
                     if new_node not in parent_t:
                         parent_t[new_node] = node
                         t_level_nodes.append(new_node)
-                        parent_t[new_node] = node
                     if node in parent_r:
                         match_node = node
                         break
@@ -176,15 +175,131 @@ def bfs2(root, target, edgelist):
         accum_r = [match_node]
         p = parent_r[match_node]
         while p is not None:
-            accum_r.insert(0, p)
+            accum_r.append(p)
             p = parent_r[p]
+        accum_r.reverse()
 
         accum_t = []
         p = parent_t[match_node]
         while p is not None:
-            accum_t.insert(0, p)
+            accum_t.append(p)
             p = parent_t[p]
-        accum_t.reverse()
+
+        accum = accum_r if accum_t is None else accum_r + accum_t
+        return (len(accum) - 1, accum)
+    else:
+        return None
+
+# Returns a matching node, if any, from the two lists of nodes (integers).
+# numbers.  However, bfs3 using this implementation of find_match, turned
+# out slower in a few tests, than bfs2.  Perhaps it would be different in C.
+# The scratch argument is just for compatibility with the other implementation.
+    
+#def find_match(list1, list2, scratch):
+#    # This will sort the lists in place; ok with intended use.
+#    list1.sort()
+#    list2.sort()
+#    len1 = len(list1)
+#    len2 = len(list2)
+#    i1 = 0
+#    i2 = 0
+#    while (i1 < len1) and (i2 < len2):
+#        curr1 = list1[i1]
+#        curr2 = list2[i2]
+#        if curr1 == curr2:
+#            return curr1
+#        elif curr1 < curr2:
+#            i1 = i1 + 1
+#        else:
+#            i2 = i2 + 1
+#    return None
+
+# Another find_match implementation, which takes extra memory and might cause
+# memory cache problems (or might not).  A previous version of this
+# implementation was the reason for switchin in bfs2 from edgelist as dictionary
+# to edgelist as array indexed by node numbers.  This was usually slower than
+# bfs2 until using numpy here.  find_match expects scratch to be a numpy array,
+# and expects values of list1 and list2 to be in the range 0..len(scratch)-1.
+
+def find_match(list1, list2, scratch):
+    match_node = None
+    for node in list2:
+        scratch[node] = True
+    for node in list1:
+        if scratch[node]:
+            match_node = node
+            break
+    scratch.fill(False)
+    return match_node
+
+# Finds shortest path from root to target given edgelist, using breadth first
+# search, adapted from bfs2 using ideas from a previous version of bfs2.  The
+# difference is doing all the matching for a level at one time, rather than as
+# the nodes in it are encountered.
+# Returns (path_len, path), path given as list of nodes, or None if no path.
+
+#@profile  # for line_profiler
+def bfs3(root, target, edgelist):
+    if (root == target):
+        return (0, [root])
+    nr_nodes = len(edgelist)
+    if (nr_nodes <= 0
+        or root < 0 or root >= nr_nodes
+        or target < 0 or target >= nr_nodes):
+        return None
+
+    scratch = numpy.zeros(nr_nodes, dtype=bool)
+
+    if len(edgelist[root]) > len(edgelist[target]):
+        (root, target) = (target, root)
+ 
+    parent_r = { root:None }
+    parent_t = { target:None }
+    r_level_nodes = [root]
+    t_level_nodes = [target]
+
+    match_node = None
+
+    # Process a whole level for r or t, before possibly switching.
+    while r_level_nodes and t_level_nodes:
+        if len(r_level_nodes) <= len(t_level_nodes):
+            level_nodes = r_level_nodes
+            r_level_nodes = []
+            for node in level_nodes:
+                for new_node in edgelist[node]:
+                    if new_node not in parent_r:
+                        parent_r[new_node] = node
+                        r_level_nodes.append(new_node)
+                        parent_r[new_node] = node
+            match_node = find_match(r_level_nodes, parent_t.keys(), scratch)
+            if match_node is not None:
+                break
+        else:
+            level_nodes = t_level_nodes
+            t_level_nodes = []
+            for node in level_nodes:
+                for new_node in edgelist[node]:
+                    if new_node not in parent_t:
+                        parent_t[new_node] = node
+                        t_level_nodes.append(new_node)
+                        parent_t[new_node] = node
+            match_node = find_match(t_level_nodes, parent_r.keys(), scratch)
+            if match_node is not None:
+                break
+ 
+    if match_node != None:
+        accum_r = [match_node]
+        p = parent_r[match_node]
+        while p is not None:
+            accum_r.append(p)
+            p = parent_r[p]
+        accum_r.reverse()
+
+        accum_t = []
+        p = parent_t[match_node]
+        while p is not None:
+            accum_t.append(p)
+            p = parent_t[p]
 
         accum = accum_r if accum_t is None else accum_r + accum_t
         return (len(accum) - 1, accum)
@@ -490,8 +605,8 @@ def main(argv):
     (degree, max_depth, nr_reps_random, nr_nodes_random, fraction_edges,
      verbose) = get_cmdline_options(argv, degree, max_depth, nr_reps_random,
                                     nr_nodes_random, fraction_edges, verbose)
-    nr_bfs = 3
-    bfs_func_list = [bfs0, bfs1, bfs2]
+    nr_bfs = 4
+    bfs_func_list = [bfs0, bfs1, bfs2, bfs3]
 
     correct_el = {1: [2, 6], 2: [1, 3], 3: [2, 4, 5], 4: [3, 5],
                   5: [3, 4], 6: [1, 7], 7: [6], 8: [9], 9: [8]}
@@ -532,8 +647,11 @@ def main(argv):
     (eltree, eltree_arr,
      eltree_ndix2nr, eltree_ndnr2ix) = construct_tree_edgelist(degree,
                                                                max_depth)
-    eltree_root_nr   = int('1' * (max_depth - 1) + '11')
-    eltree_target_nr = int('1' * (max_depth - 1) + '21')
+    nr_digits_per_level = int(math.ceil(math.log10(degree)))
+    rightfill = '0' * (nr_digits_per_level - 1)
+    eltree_root_nr   = int((rightfill + '1') * (max_depth + 1))
+    eltree_target_nr = int((rightfill + '1') * (max_depth - 1)
+                           + (rightfill + '2') + (rightfill + '1'))
 
     # Order makes a difference in timing; putting node with smaller edgelist
     # as root has been faster.
@@ -655,7 +773,7 @@ def main(argv):
                 ran_pathlen[i] = ran_pathlen[i] + global_bfs_output[0]
             ran_output[i] = global_bfs_output
             if not output_eq_or_rev(ran_output[i], ran_output[0]):
-                print('Inconsistency random graph bfs{0},bfs0)'.format(i))
+                print('Inconsistency random graph bfs{0},bfs0'.format(i))
                 print(ran_output[i])
                 print(ran_output[0])
 

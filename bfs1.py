@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # bfs1.py rev 11 Jan 2014 Stuart Ambler
-# Second try at single pair shortest path algorithm via bread first search.
+# Second try at single pair shortest path algorithm via breadth first search.
 # Copyright (c) 2014 Stuart Ambler.
 # Distributed under the Boost License in the accompanying file LICENSE.
 
