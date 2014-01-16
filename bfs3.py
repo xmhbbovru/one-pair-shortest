@@ -39,6 +39,8 @@ import numpy
 # and expects values of list1 and list2 to be in the range 0..len(scratch)-1.
 
 def find_match(list1, list2, scratch):
+    if len(list1) < len(list2):
+        (list1, list2) = (list2, list1)
     match_node = None
     for node in list2:
         scratch[node] = True
@@ -46,7 +48,8 @@ def find_match(list1, list2, scratch):
         if scratch[node]:
             match_node = node
             break
-    scratch.fill(False)
+    for node in list2:
+        scratch[node] = False
     return match_node
 
 # Finds shortest path from root to target given edgelist, using breadth first

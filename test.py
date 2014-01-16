@@ -21,7 +21,7 @@ from bfs2    import *
 from bfs3    import *
 from gendata import *
 
-# Transforms data as needed for input to bfs0,1,2, since the first two
+# Transforms data as needed for input to bfs0,1,2,... since the first two
 # use an edgelist dict with meaningful or given node numbers, but the
 # third uses an edgelist list with contiguous node numbers starting at 0
 # as indices.
@@ -33,7 +33,7 @@ def bfs_input_helper(i, root, target, el, el_name, el_arr, elndnr2ix):
         return (elndnr2ix[root], elndnr2ix[target], el_arr,
                 el_name + '_arr')
 
-# Transforms data output from bfs0,1,2, since the first two return
+# Transforms data output from bfs0,1,2,... since the first two return
 # paths with meaningful or given node numbers, but the third returns
 # a path with node numbers that are list indices.
 
@@ -47,7 +47,7 @@ def bfs_output_helper(i, output, elndix2nr):
         path    = output[1]
         return (pathlen, [elndix2nr[node] for node in path])
 
-# Used to check that output from bfs0,1,2 is the same or with reversed path
+# Used to check that output from bfs0,1,2... is the same or with reversed path
 
 def output_eq_or_rev(output1, output2):
     if output1 == output2:

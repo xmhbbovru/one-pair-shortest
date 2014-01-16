@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# bfs2.py rev 12 Jan 2014 Stuart Ambler
+# bfs2.py rev 14 Jan 2014 Stuart Ambler
 # Third try at single pair shortest path algorithm via breadth first search.
 # Copyright (c) 2014 Stuart Ambler.
 # Distributed under the Boost License in the accompanying file LICENSE.
@@ -47,8 +47,10 @@ def bfs2(root, target, edgelist):
                     if new_node not in parent_r:
                         parent_r[new_node] = node
                         r_level_nodes.append(new_node)
-                    if node in parent_t:
-                        match_node = node
+                    # Could just check in t_level nodes (see LaTeX proof
+                    # of method), but in practice it didn't really seem to help.
+                    if new_node in parent_t:
+                        match_node = new_node
                         break
                 if match_node is not None:
                     break
@@ -60,8 +62,10 @@ def bfs2(root, target, edgelist):
                     if new_node not in parent_t:
                         parent_t[new_node] = node
                         t_level_nodes.append(new_node)
-                    if node in parent_r:
-                        match_node = node
+                    # Could just check in r_level nodes (see LaTeX proof
+                    # of method), but in practice it didn't really seem to help.
+                    if new_node in parent_r:
+                        match_node = new_node
                         break
                 if match_node is not None:
                     break
