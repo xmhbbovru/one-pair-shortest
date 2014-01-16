@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# bfs2.py rev 14 Jan 2014 Stuart Ambler
+# bfs2.py rev 15 Jan 2014 Stuart Ambler
 # Third try at single pair shortest path algorithm via breadth first search.
 # Copyright (c) 2014 Stuart Ambler.
 # Distributed under the Boost License in the accompanying file LICENSE.
@@ -14,7 +14,7 @@
 
 # When starting to write this, I added a note to use optimizations assuming the
 # path is much smaller than 1/2 the size of the edgelist, but it looks like
-# none occurred to me).
+# none occurred to me.
 
 #@profile  # for line_profiler
 def bfs2(root, target, edgelist):

@@ -118,7 +118,7 @@ def bfs1(root, target, edgelist):
 
 # When starting to write this, I added a note to use optimizations assuming the
 # path is much smaller than 1/2 the size of the edgelist, but it looks like
-# none occurred to me).
+# none occurred to me.
 
 #@profile  # for line_profiler
 def bfs2(root, target, edgelist):
