@@ -1,11 +1,109 @@
 #!/usr/bin/env python
-# gendata.py rev 11 Jan 2014 Stuart Ambler
+# gendata.py rev 28 Jan 2014 Stuart Ambler
 # Generate or read graphs for testings; generates trees or random graphs.
 # Copyright (c) 2014 Stuart Ambler.
 # Distributed under the Boost License in the accompanying file LICENSE.
 
 import math
 import random
+import tempfile
+
+# Returns as a list of pairs, the edges of the graph
+#
+# 1--2--3--4  8--9
+# |      \ |
+# 6--7    \5
+
+def example_edgelist_of_pairs():
+    return [(2, 1),
+            (1, 2),
+            (3, 2),
+            (2, 3),
+            (4, 3),
+            (5, 3),
+            (3, 4),
+            (5, 4),
+            (3, 5),
+            (4, 5),
+            (6, 1),
+            (1, 6),
+            (7, 6),
+            (6, 7),
+            (9, 8),
+            (8, 9)]
+
+# Returns data for checking the results of finding shortest paths in the data
+# from example_edgelist_lines, a dict with keys pairs of nodes and values pairs
+# of shortest path lengths and shortest paths.
+
+def example_shortest_paths():
+    half = {(1, 2):(1, [1, 2]),
+            (1, 3):(2, [1, 2, 3]),
+            (1, 4):(3, [1, 2, 3, 4]),
+            (1, 5):(3, [1, 2, 3, 5]),
+            (1, 6):(1, [1, 6]),
+            (1, 7):(2, [1, 6, 7]),
+            (1, 8):None,
+            (1, 9):None,
+
+            (2, 3):(1, [2, 3]),
+            (2, 4):(2, [2, 3, 4]),
+            (2, 5):(2, [2, 3, 5]),
+            (2, 6):(2, [2, 1, 6]),
+            (2, 7):(3, [2, 1, 6, 7]),
+            (2, 8):None,
+            (2, 9):None,
+
+            (3, 4):(1, [3, 4]),
+            (3, 5):(1, [3, 5]),
+            (3, 6):(3, [3, 2, 1, 6]),
+            (3, 7):(4, [3, 2, 1, 6, 7]),
+            (3, 8):None,
+            (3, 9):None,
+
+            (4, 5):(1, [4, 5]),
+            (4, 6):(4, [4, 3, 2, 1, 6]),
+            (4, 7):(5, [4, 3, 2, 1, 6, 7]),
+            (4, 8):None,
+            (4, 9):None,
+
+            (5, 6):(4, [5, 3, 2, 1, 6]),
+            (5, 7):(5, [5, 3, 2, 1, 6, 7]),
+            (5, 8):None,
+            (5, 9):None,
+
+            (6, 7):(1, [6, 7]),
+            (6, 8):None,
+            (6, 9):None,
+
+            (7, 8):None,
+            (7, 9):None,
+
+            (8, 9):(1, [8, 9])}
+
+    retval = dict(half)
+    for p in half.keys():
+        rev_p = (p[1], p[0])
+        if half[p] is None:
+            retval[rev_p] = None
+        else:
+            retval[rev_p] = (half[p][0], [x for x in reversed(half[p][1])])
+    return retval
+
+# Creates test data for read_edgelist.
+
+def write_edgelist_of_pairs(elp):
+    f = tempfile.NamedTemporaryFile(mode='w', delete=False)
+    f.writelines(['{0} {1}\n'.format(*pair) for pair in elp])
+    f.close()
+    return f.name
+
+# For checking the results of read_edgelist of the file created by
+# write_edgelist_of_pairs given data from example_edgelist_of_pairs.
+
+def correctly_read_example_edgelist_of_pairs():
+    return {1: [2, 6], 2: [1, 3], 3: [2, 4, 5], 4: [3, 5],
+            5: [3, 4], 6: [1, 7], 7: [6], 8: [9], 9: [8]}
 
 # Assumes one edge per line, a pair of integer node numbers separated by
 # whitespace, that contains both ordered pairs for each undirected edge.

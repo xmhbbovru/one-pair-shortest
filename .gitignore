@@ -1,4 +1,4 @@
-# .gitignore rev. 12 January 2014 by Stuart Ambler.
+# .gitignore rev. 28 January 2014 by Stuart Ambler.
 # Copyright (c) 2014 Stuart Ambler.
 # Distributed under the Boost License in the accompanying file LICENSE.
 
@@ -7,3 +7,4 @@
 pstats.py
 README.html
 /__pycache__
+/old
