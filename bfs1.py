@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# bfs1.py rev 11 Jan 2014 Stuart Ambler
+# bfs1.py rev 29 Jan 2014 Stuart Ambler
 # Second try at single pair shortest path algorithm via breadth first search.
 # Copyright (c) 2014 Stuart Ambler.
 # Distributed under the Boost License in the accompanying file LICENSE.
@@ -27,7 +27,6 @@ def bfs1(root, target, edgelist):
 
     queue = deque()
     queue.append(root)
-    prev = root
 
     done = False
     while (not done) and len(queue) > 0:
@@ -43,8 +42,9 @@ def bfs1(root, target, edgelist):
         accum = [target]
         p = parent[target]
         while p is not None:
-            accum.insert(0, p)
+            accum.append(p)
             p = parent[p]
+        accum.reverse()
         return (len(accum) - 1, accum)
     else:
         return None

@@ -1,9 +1,14 @@
-# .gitignore rev. 28 January 2014 by Stuart Ambler.
+# .gitignore rev. 29 January 2014 by Stuart Ambler.
 # Copyright (c) 2014 Stuart Ambler.
 # Distributed under the Boost License in the accompanying file LICENSE.
 
 *~
 *.pyc
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
 .coverage
 pstats.py
 README.html
