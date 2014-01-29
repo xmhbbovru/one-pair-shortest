@@ -2,18 +2,18 @@ README.md rev. 28 January 2014 by Stuart Ambler.
 Copyright (c) 2014 Stuart Ambler.
 Distributed under the Boost License in the accompanying file LICENSE.
 
-# Single Pair Shortest Path Algorithms for Unweighted Undirected Graphs
+# Two Single Pair Shortest Path Algorithms for Unweighted Undirected Graphs
 
 - bfs1.py         unidirectional breadth first search
-- bfs2.py         bidirectional bfs, going from both ends toward the middle.
+- bfs2.py         bidirectional bfs, going from both ends toward the middle
 - bfserr.py       methods that return errors, for testing the test framework
-- edgelist.txt    edgelist of a graph used by some of the tests; might be an
-                  arbitrary graph, but test.test would take time finding
-                  shortest paths between all pairs of edges in it
-- gendata.py      generates test data, trees and random graphs.
+- edgelist.txt    contains the edgelist of a graph used by tests that find
+                  shortest paths between all node pairs in it
+- gendata.py      generates test data: a small example, trees, and random
+                  graphs
 - rununittest.py  runs unit tests (mostly test.test with various arguments)
-                  and gets coverage, using nose
-- test.py         tests the algorithms.
+                  and gets coverage; using nose
+- test.py         tests and times the algorithms
 
 Tested with python 2.7.5+, coverage 3.6; and python 3.3.2+, coverage 3.7.1.
 To test,
