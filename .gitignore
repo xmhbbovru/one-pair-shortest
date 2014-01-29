@@ -4,7 +4,9 @@
 
 *~
 *.pyc
+.coverage
 pstats.py
 README.html
 /__pycache__
+/htmlcov
 /old

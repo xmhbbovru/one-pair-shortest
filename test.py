@@ -18,32 +18,35 @@ import timeit
 
 from bfs1    import *
 from bfs2    import *
+from bfserr  import *
 from gendata import *
+
+invalid_input_exit_code = 2
 
 # Transforms data as needed for input to bfs1,2 since the first one uses
 # an edgelist dict with meaningful or given node numbers, but the second
 # uses an edgelist list with contiguous node numbers starting at 0 as indices.
 
-def bfs_input_helper(i, root, target, el, el_name, el_arr, el_nd_nr_2_ix):
-    if i < 2:
-        return (root, target, el, el_name)
-    else:
+def bfs_input_helper(contig, root, target, el, el_name, el_arr, el_nd_nr_2_ix):
+    if contig:
         return (el_nd_nr_2_ix[root], el_nd_nr_2_ix[target], el_arr,
                 el_name + '_arr')
+    else:
+        return (root, target, el, el_name)
 
 # Transforms data output from bfs1,2 since the first one returns paths
 # with meaningful or given node numbers, but the second returns a path
 # with node numbers that are list indices.
 
-def bfs_output_helper(i, output, el_nd_ix_2_nr):
-    if i < 2:
-        return(output)
-    else:
+def bfs_output_helper(contig, output, el_nd_ix_2_nr):
+    if contig:
         if output is None:
             return None
-    pathlen = output[0]
-    path    = output[1]
-    return (pathlen, [el_nd_ix_2_nr[node] for node in path])
+        pathlen = output[0]
+        path    = output[1]
+        return (pathlen, [el_nd_ix_2_nr[node] for node in path])
+    else:
+        return(output)
 
 # Used to check that output from bfs1,2 is the same or with reversed path
 
@@ -63,7 +66,8 @@ global_bfs_output = (0,[0])  # used for communication from timeit function calls
 
 # Test that the example graph is written, read, and processed correctly.
 
-def test_example(bfs_func_list):
+def test_example(bfs_func_list, bfs_contig, errors, verbose,
+                 cause_error_kludge=False):
     print('testing example graph')
     nr_bfs = len(bfs_func_list)
 
@@ -71,34 +75,43 @@ def test_example(bfs_func_list):
     example_el = read_edgelist(tmp_filename)
     os.remove(tmp_filename)
     correctly_read_example = correctly_read_example_edgelist_of_pairs()
-    if correctly_read_example != example_el:
+    if correctly_read_example != example_el or cause_error_kludge:
+        errors.append('test_example read_edgelist problem')
         print('  error, example edgelist of pairs expected: ',
               correctly_read_example)
         print('    as read, ', example_el)
+        return
+
     (example_el, example_el_arr, example_el_nd_ix_2_nr,
      example_el_nd_nr_2_ix) = make_contiguous_edgelist(example_el)
     correct_example_el_output = example_shortest_paths()
 
     nodelist = sorted(example_el.keys())
+    bfs_problem = False
     for i in range(1, nr_bfs):
+        contig = bfs_contig[i]
         for x in itertools.combinations(nodelist, 2):
-            (root, target, e, name) = bfs_input_helper(i, x[0], x[1],
+            (root, target, e, name) = bfs_input_helper(contig, x[0], x[1],
                                                        example_el,
                                                        'example_el',
                                                        example_el_arr,
                                                        example_el_nd_nr_2_ix)
-            bfsi_output = bfs_output_helper(i, bfs_func_list[i](root, target,e),
+            bfsi_output = bfs_output_helper(contig, bfs_func_list[i](root,
+                                                                     target,e),
                                             example_el_nd_ix_2_nr)
             if not output_eq_or_rev(bfsi_output,
                                     correct_example_el_output[(root, target)]):
+                bfs_problem = True  # assume example shortest paths unique
                 print('  error, {0}({1}, {2}, example_el)'.format(
-                        *((bfs_func_list[i].func_name,) + x)))
+                        *((bfs_func_list[i].__name__,) + x)))
                 print('    expected', correct_example_el_output[(root, target)])
                 print('    actual', bfsi_output)
+    if bfs_problem:
+        errors.append('test_example bfs problem')
 
 # Test and time with edgelist from file.
                 
-def test_file(edge_filename, bfs_func_list, verbose):
+def test_file(edge_filename, bfs_func_list, bfs_contig, errors, verbose):
     if not edge_filename:
         return
 
@@ -112,50 +125,61 @@ def test_file(edge_filename, bfs_func_list, verbose):
     # Test that the various methods agree on all pairs for graph from file.
 
     nodelist = sorted(el.keys())
+    bfs_problem = False
     for i in range(1, nr_bfs):
+        contig = bfs_contig[i]
         for x in itertools.combinations(nodelist, 2):
-            (root, target, e, name) = bfs_input_helper(i, x[0], x[1], el,
+            (root, target, e, name) = bfs_input_helper(contig, x[0], x[1], el,
                                                        'el', el_arr,
                                                        el_nd_nr_2_ix)
-            bfsi_output = bfs_output_helper(i, bfs_func_list[i](root, target,e),
+            bfsi_output = bfs_output_helper(contig, bfs_func_list[i](root,
+                                                                     target,e),
                                             el_nd_ix_2_nr)
             bfs1_output = bfs1(x[0], x[1], el)
             if verbose:
                 print('  ', root, target, 'bfs1', bfs1_output)
             if not output_eq_or_rev(bfs1_output, bfsi_output):
+                if ((bfs1_output is None) or (bfsi_output is None)
+                    or (bfs1_output[0] != bfsi_output[0])):
+                    bfs_problem = True
                 if not verbose:
                     print('  ', root, target, 'bfs1', bfs1_output)
                 print('  Inconsistent with')
                 print('  ', root, target,
-                      bfs_func_list[i].func_name, bfsi_output)
+                      bfs_func_list[i].__name__, bfsi_output)
+    if bfs_problem:
+        errors.append('test_file bfs problem')
                     
     # Total times for each of various methods for all pairs for graph.
 
     for i in range(0, nr_bfs):
+        contig = bfs_contig[i]
         t = 0
         for x in itertools.combinations(nodelist, 2):
-            (root, target, e, name) = bfs_input_helper(i, x[0], x[1], el,
+            (root, target, e, name) = bfs_input_helper(contig, x[0], x[1], el,
                                                        'el', el_arr,
                                                        el_nd_nr_2_ix)
-            test_str = ('shortestpath.{0}({1}, {2}, {3})'
-                        + '').format(bfs_func_list[i].func_name,
+            test_str = ('{0}.{1}({2}, {3}, {4})'
+                        + '').format(bfs_func_list[i].__module__,
+                                     bfs_func_list[i].__name__,
                                      root, target, name)
-            setup_str = ('import shortestpath; '
-                         + 'el = shortestpath.read_edgelist('
+            setup_str = ('import {0}; import gendata; import test; '
+                         + 'el = gendata.read_edgelist('
                          + '"edgelist.txt"); (el, el_arr, el_nd_ix_2_nr, '
                          + 'el_nd_nr_2_ix) = '
-                         + 'shortestpath.make_contiguous_edgelist(el); '
+                         + 'gendata.make_contiguous_edgelist(el); '
                          + '(root, target, e, name) = '
-                         + 'shortestpath.bfs_input_helper({1}, '
+                         + 'test.bfs_input_helper({1}, '
                          + '{2}, {3}, el, "el", '
                          + 'el_arr, el_nd_nr_2_ix)'
-                         ).format(bfs_func_list[i].func_name, i, x[0], x[1])
+                         ).format(bfs_func_list[i].__module__, contig,
+                                  x[0], x[1])
             t = t + timeit.timeit(test_str, setup=setup_str, number=1)
-        print('  {0} {1}'.format(bfs_func_list[i].func_name, t))
+        print('  {0} {1}'.format(bfs_func_list[i].__name__, t))
 
-# Generate, test, and time with tree graph.
+# Generate and time with tree graph.
 
-def test_tree(degree, max_depth, bfs_func_list, verbose):
+def test_tree(degree, max_depth, bfs_func_list, bfs_contig, errors, verbose):
     print('generating tree graph')
     nr_bfs = len(bfs_func_list)
 
@@ -169,7 +193,7 @@ def test_tree(degree, max_depth, bfs_func_list, verbose):
                             + (rightfill + '2') + (rightfill + '1'))
 
     # Order makes a difference in timing; putting node with smaller edgelist
-    # as root has been faster, though the bsf functions now check for that.
+    # as root has been faster, though the bfs functions now check for that.
 
     nr_nodes = len(eltree.keys())
     nr_edges = 0
@@ -177,45 +201,48 @@ def test_tree(degree, max_depth, bfs_func_list, verbose):
         nr_edges += len(an_el)
     nr_edges /= 2
     tree_condition_equal_sign = '==' if nr_nodes == nr_edges + 1 else "!="
-    print(('testing and timing degree {0}, max_depth {1}, nr nodes {2} '
+    print(('timing degree {0}, max_depth {1}, nr nodes {2} '
            '{3} nr edges + 1').format(degree, max_depth, len(eltree.keys()),
                                       tree_condition_equal_sign))
 
     # Times for the various methods for tree graph.
 
     for i in range(0, nr_bfs):
-        (root, target, e, name) = bfs_input_helper(i, eltree_root_nr,
+        contig = bfs_contig[i]
+        (root, target, e, name) = bfs_input_helper(contig, eltree_root_nr,
                                                    eltree_target_nr,
                                                    eltree, 'eltree',
                                                    eltree_arr,
                                                    eltree_nd_nr_2_ix)
         if verbose:
-            test_str = ('output = shortestpath.{0}'
-                        + '({1}, {2}, {3}); print('
-                        + 'shortestpath.bfs_output_helper({4}, '
+            test_str = ('output = {0}.{1}'
+                        + '({2}, {3}, {4}); print('
+                        + 'test.bfs_output_helper({5}, '
                         + 'output, eltree_nd_ix_2_nr))'
-                        + ' ').format(bfs_func_list[i].func_name,
-                                      root, target, name, i)
+                        + ' ').format(bfs_func_list[i].__module__,
+                                      bfs_func_list[i].__name__,
+                                     root, target, name, contig)
         else:
-            test_str = ('output = shortestpath.{0}'
-                        + '({1}, {2}, {3})'
-                        + '').format(bfs_func_list[i].func_name,
+            test_str = ('output = {0}.{1}'
+                        + '({2}, {3}, {4})'
+                        + '').format(bfs_func_list[i].__module__,
+                                     bfs_func_list[i].__name__,
                                      root, target, name)
-        setup_str = ('import shortestpath; '
+        setup_str = ('import {0}; import gendata; import test; '
                      + '(eltree, eltree_arr, eltree_nd_ix_2_nr, '
                      + 'eltree_nd_nr_2_ix) = '
-                     + 'shortestpath.construct_tree_edgelist'
+                     + 'gendata.construct_tree_edgelist'
                      + '({1}, {2})'
-                     + '').format(bfs_func_list[i].func_name,
+                     + '').format(bfs_func_list[i].__module__,
                                   degree, max_depth)
         t = timeit.timeit(test_str, setup=setup_str, number=1)
-        print('  {0} {1} {2} {3}'.format(bfs_func_list[i].func_name,
+        print('  {0} {1} {2} {3}'.format(bfs_func_list[i].__name__,
                                          eltree_root_nr, eltree_target_nr, t))
 
 # Generate random graphs, choose nodes at random, test and time.
 
 def test_random(nr_reps_random, nr_nodes_random, fraction_edges,
-                bfs_func_list, verbose):
+                bfs_func_list, bfs_contig, errors, verbose):
     if not (nr_reps_random > 0):
         return
 
@@ -228,6 +255,7 @@ def test_random(nr_reps_random, nr_nodes_random, fraction_edges,
     tot_act_nr_nodes = 0
     tot_act_nr_edges = 0
     tot_nr_no_paths  = 0
+    bfs_problem      = False
 
     # Because of the time to generate, put the bfs method loop inside the
     # generation rep loop.
@@ -251,15 +279,15 @@ def test_random(nr_reps_random, nr_nodes_random, fraction_edges,
             ran_target_nr = ran_nd_ix_2_nr[ran_target_ix]
 
         for i in range(0, nr_bfs):
-            (root, target, e, name) = bfs_input_helper(i, ran_root_nr,
+            contig = bfs_contig[i]
+            (root, target, e, name) = bfs_input_helper(contig, ran_root_nr,
                                                        ran_target_nr,
                                                        ran, 'ran', ran_arr,
                                                        ran_nd_nr_2_ix)
             def f():
                 global global_bfs_output
                 global_bfs_output = bfs_output_helper(
-                    i, bfs_func_list[i](root, target, e),
-                    ran_nd_ix_2_nr)
+                    contig, bfs_func_list[i](root, target, e), ran_nd_ix_2_nr)
             ran_t[i] = ran_t[i] + timeit.timeit(f, number=1)
             if global_bfs_output is None:
                 tot_nr_no_paths = tot_nr_no_paths + 1
@@ -267,11 +295,16 @@ def test_random(nr_reps_random, nr_nodes_random, fraction_edges,
                 ran_pathlen[i] = ran_pathlen[i] + global_bfs_output[0]
                 ran_output[i] = global_bfs_output
                 if not output_eq_or_rev(ran_output[0], ran_output[i]):
+                    if ((ran_output[0] is None) or (ran_output[i] is None)
+                        or (ran_output[0][0] != ran_output[i][0])):
+                        bfs_problem = True
                     print(('  Inconsistency random graph {0}, {1}'
-                           + '').format(bfs_func_list[0].func_name,
-                                        bfs_func_list[i].func_name))
+                           + '').format(bfs_func_list[0].__name__,
+                                        bfs_func_list[i].__name__))
                     print('  ', ran_output[0])
                     print('  ', ran_output[i])
+    if bfs_problem:
+        errors.append('test_random bfs problem')
 
     # Display random graphs timing.
 
@@ -287,10 +320,10 @@ def test_random(nr_reps_random, nr_nodes_random, fraction_edges,
                             tot_nr_no_paths))
         for i in range(0, nr_bfs):
             if verbose:
-                print('  {0} output'.format(bfs_func_list[i].func_name,),
+                print('  {0} output'.format(bfs_func_list[i].__name__,),
                       ran_output[i])
             print(('  {0} mean time {1}'
-                   + '').format(bfs_func_list[i].func_name,
+                   + '').format(bfs_func_list[i].__name__,
                                 ran_t[i] / float(nr_reps_random)))
     
 # Print usage with default values.
@@ -318,9 +351,11 @@ Usage: python test.py [-e <edge_file>]
 """.format(d_edge_filename, d_degree, d_max_depth,
            d_nr_reps_random, d_nr_nodes_random, d_fraction_edges))
 
+# Exits (doesn't return) if error or help requested.
+
 def get_cmdline_options(argv, edge_filename, degree, max_depth,
                         nr_reps_random, nr_nodes_random, fraction_edges,
-                        verbose, do_help):
+                        verbose):
     # save default values
     d_edge_filename   = edge_filename
     d_degree          = degree
@@ -329,7 +364,7 @@ def get_cmdline_options(argv, edge_filename, degree, max_depth,
     d_nr_nodes_random = nr_nodes_random
     d_fraction_edges  = fraction_edges
 
-    invalid_input_exit_code = 2
+    global invalid_input_exit_code
 
     if isinstance(argv, str):
         argv = argv.split(' ')
@@ -358,7 +393,7 @@ def get_cmdline_options(argv, edge_filename, degree, max_depth,
                     print('degree must be an integer at least 2')
                     usage(d_edge_filename, d_degree, d_max_depth,
                           d_nr_reps_random, d_nr_nodes_random, d_fraction_edges)
-                    sys.exit(2)
+                    sys.exit(invalid_input_exit_code)
             except ValueError:
                 print('degree must be an integer at least 2')
                 usage(d_edge_filename, d_degree, d_max_depth,
@@ -422,14 +457,15 @@ def get_cmdline_options(argv, edge_filename, degree, max_depth,
         elif opt in ('-v', '--verbose'):
             verbose = True
         elif opt in ('-h', '--help'):
-            do_help = True
             usage(d_edge_filename, d_degree, d_max_depth,
                   d_nr_reps_random, d_nr_nodes_random, d_fraction_edges)
+            sys.exit(0)
 
     return (edge_filename, degree, max_depth, nr_reps_random, nr_nodes_random,
-            fraction_edges, verbose, do_help)
+            fraction_edges, verbose)
 
-def main(argv):
+def test(argv,
+         example_err=False, file_err=False, tree_err=False, ran_err=False):
     global global_bfs_output
 
     edge_filename   = ''
@@ -439,30 +475,57 @@ def main(argv):
     nr_nodes_random = 10000
     fraction_edges  = 0.005
     verbose         = False
-    do_help         = False
     (edge_filename, degree, max_depth, nr_reps_random, nr_nodes_random,
-     fraction_edges, verbose, do_help) = get_cmdline_options(argv,
-                                                             edge_filename,
-                                                             degree,
-                                                             max_depth,
-                                                             nr_reps_random,
-                                                             nr_nodes_random,
-                                                             fraction_edges,
-                                                             verbose, do_help)
-    if do_help:
-        sys.exit(0)
-
+     fraction_edges, verbose) = get_cmdline_options(argv,
+                                                    edge_filename,
+                                                    degree,
+                                                    max_depth,
+                                                    nr_reps_random,
+                                                    nr_nodes_random,
+                                                    fraction_edges,
+                                                    verbose)
     bfs_func_list = [bfs1, bfs2]
-    test_example(bfs_func_list)
+    bfserr_func_ix = 1
+    bfs_func_list_save = list(bfs_func_list)
+    bfs_contig = [False, False]
+    errors = []
+
+    if example_err:
+        bfs_func_list[bfserr_func_ix] = bfserr_node
+    test_example(bfs_func_list, bfs_contig, errors, verbose)
+    if example_err:
+        bfs_func_list[bfserr_func_ix] = bfs_func_list_save[bfserr_func_ix]
+
+    if file_err:
+        bfs_func_list[bfserr_func_ix] = bfserr_none
     test_file(edge_filename,
-              bfs_func_list, verbose)
+              bfs_func_list, bfs_contig, errors, verbose)
+    if file_err:
+        bfs_func_list[bfserr_func_ix] = bfs_func_list_save[bfserr_func_ix]
+
+    if tree_err:
+        bfs_func_list[bfserr_func_ix] = bfserr_none
     test_tree(degree, max_depth,
-              bfs_func_list, verbose)
+              bfs_func_list, bfs_contig, errors, verbose)  # it doesn't test...
+    if tree_err:
+        bfs_func_list[bfserr_func_ix] = bfs_func_list_save[bfserr_func_ix]
+
+    if ran_err:
+        bfs_func_list[bfserr_func_ix] = bfserr_len
     test_random(nr_reps_random, nr_nodes_random, fraction_edges,
-                bfs_func_list, verbose)
+                bfs_func_list, bfs_contig, errors, verbose)
+    if ran_err:
+        bfs_func_list[bfserr_func_ix] = bfs_func_list_save[bfserr_func_ix]
+
+    if errors:
+        print(errors)
+    return errors
+
+def main(argv):
+    return test(argv)
 
 if __name__ == '__main__':
-    main (sys.argv[1:])
+    main(sys.argv[1:])
 
 """ From interactive python prompt:
 """

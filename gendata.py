@@ -152,6 +152,7 @@ def make_contiguous_edgelist(edgelist):
 def construct_tree_level(degree, max_depth, curr_depth, nodelist, edgelist):
     nr_digits_per_level = int(math.ceil(math.log10(degree)))
     depth_factor = 10**(curr_depth * nr_digits_per_level)
+    new_nodelist = []
     for n in nodelist:  # node is tuple (node_nr, depth)
         if n[1] + 1 == curr_depth:
             # root has no parent so needs one more child
@@ -160,7 +161,7 @@ def construct_tree_level(degree, max_depth, curr_depth, nodelist, edgelist):
                 node_nr = n[0]
                 new_node_nr = node_nr + (i + 1) * depth_factor
                 new_node = (new_node_nr, curr_depth)
-                nodelist.append(new_node)
+                new_nodelist.append(new_node)
 
                 old_list = edgelist.get(node_nr)
                 if old_list:
@@ -168,11 +169,18 @@ def construct_tree_level(degree, max_depth, curr_depth, nodelist, edgelist):
                 else:
                     edgelist[node_nr] = [new_node_nr]
 
+                # Used to have the following, but coverage said the first
+                # condition never occurred.  If the rest of the logic here and
+                # in callers is ok, could just use what's after else.
+                # However, probably little cost.
+
                 new_list = edgelist.get(new_node_nr)
                 if new_list:
                     new_list.append(node_nr)
                 else:
                     edgelist[new_node_nr] = [node_nr]
+
+    nodelist += new_nodelist
 
 # degree must be at least 2.  The degree of the leaves will be 1.
 # Returns per make_contiguous_edgelist, an edgelist dict with 'meaningful' edge
